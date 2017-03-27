@@ -11,6 +11,8 @@ class MyQQBot(QQBot):
             self.stopped = True
             self.send(msgType, from_uin, 'QQ机器人已关闭')
 
-myqqbot = MyQQBot()
-myqqbot.Login()
-myqqbot.PollForever()
+try:
+	bot = MyQQBot()
+	bot.LoginAndRun()
+except KeyboardInterrupt:
+        sys.exit(0)
