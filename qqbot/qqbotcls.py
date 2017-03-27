@@ -40,22 +40,22 @@ class QQBot(MessageFactory):
         self.On('qqmessage',   ai.OnQQMessage)          # main thread
         self.On('polltimeout', ai.OnPollTimeout)        # main thread
         self.On('termmessage', ai.OnTermMessage)        # main thread
-        self.On('pollcomplete',  QQBot.onPollComplete)  # main thread        
+        self.On('pollcomplete',  QQBot.onPollComplete)  # main thread
 
-        self.AddGenerator(self.pollForever)             # child thread 1 
+        self.AddGenerator(self.pollForever)             # child thread 1
         self.AddGenerator(termServer.Run)               # child thread 2
-    
+
     def Login(self):
         self.conf.Display()
         session, contacts = QLogin(conf=self.conf)
-        
+
         self.Get = contacts.Get                         # main thread
         self.List = contacts.List                       # main thread
         self.assignContacts = contacts.Assign           # main thread
         self.send = session.Send                        # main thread
-        
+
         self.poll = session.Copy().Poll                 # child thread 1
-    
+
     def LoginAndRun(self):
         if isSubprocessCall:
             self.Login()
@@ -95,23 +95,23 @@ class QQBot(MessageFactory):
     def Send(self, ctype, *args, **kw):
         if len(args) + len(kw) != 2:
             raise TypeError('Wrong arguments!')
-        
+
         if len(args) < 2 and 'content' not in kw:
             raise TypeError('Wrong arguments!')
-        
+
         if len(args) == 2:
             content, args = args[1], args[:1]
         else:
             content = kw.pop('content')
-        
+
         result = []
         if content:
             for contact in self.Get(ctype, *args, **kw):
                 result.append(self.SendTo(contact, content))
         return result
-    
+
     def SendTo(self, contact, content):
-        if content:        
+        if content:
             content = str(content)
             result = '向 %s 发消息成功' % str(contact)
             while content:
@@ -126,10 +126,10 @@ class QQBot(MessageFactory):
                 yield Message('pollcomplete', result=self.poll())
         finally:
             yield Message('stop', code=1)
-    
+
     def onPollComplete(self, message):
         ctype, fromUin, memberUin, content = message.result
-        
+
         if ctype == 'timeout':
             self.Process(Message('polltimeout'))
             return
@@ -150,7 +150,7 @@ class QQBot(MessageFactory):
         self.Process(QQMessage(
             contact, memberUin, memberName, content, self.SendTo
         ))
-    
+
     def onStop(self, code):
         if code == 0:
             INFO('QQBot 正常停止')
@@ -163,14 +163,14 @@ class QQBot(MessageFactory):
 
 class QQMessage(Message):
     mtype = 'qqmessage'
-    
+
     def __init__(self, contact, memberUin, memberName, content, sendTo):
         self.contact = contact
         self.memberUin = memberUin
         self.memberName = memberName
         self.content = content
         self.sendTo = sendTo
-    
+
     def Reply(self, reply):
         if reply:
             time.sleep(random.randint(1, 4))
@@ -196,7 +196,7 @@ class BasicAI(object):
 
     def OnPollTimeout(self, bot, msg):
         pass
-    
+
     def OnQQMessage(self, bot, msg):
         if msg.content == '--version':
             msg.Reply('QQbot-' + bot.conf.version)
@@ -207,33 +207,33 @@ class BasicAI(object):
 
     def OnTermMessage(self, bot, msg):
         msg.Reply(self.execute(bot, msg))
-    
+
     def execute(self, bot, msg):
         argv = msg.content.strip().split()
         if argv and argv[0]:
             f = self.cmdFuncs.get(argv[0], None)
             return f and f(argv[1:], msg, bot)
-    
+
     def cmd_help(self, args, msg, bot):
-        '''1 help'''       
+        '''1 help'''
         if len(args) == 0:
             return (msg.mtype=='qqmessage' and self.qqUsage or self.termUsage)
-    
+
     def cmd_list(self, args, msg, bot):
         '''2 list buddy|group|discuss'''
         if len(args) == 1:
             return '\n'.join(map(repr, bot.List(args[0])))
-    
+
     def cmd_send(self, args, msg, bot):
         '''3 send buddy|group|discuss x|uin=x|qq=x|name=x message'''
         if len(args) >= 3:
             return '\n'.join(bot.Send(args[0], args[1], ' '.join(args[2:])))
-    
+
     def cmd_get(self, args, msg, bot):
         '''4 get buddy|group|discuss x|uin=x|qq=x|name=x'''
         if len(args) == 2:
             return '\n'.join(map(repr, bot.Get(args[0], args[1])))
-    
+
     def cmd_member(self, args, msg, bot):
         '''5 member group|discuss x|uin=x|qq=x|name=x'''
         if len(args) == 2 and args[0] in ('group', 'discuss'):
@@ -243,14 +243,14 @@ class BasicAI(object):
                 for uin, name in list(contact.members.items()):
                     result.append('    成员：%s，uin%s' % (name, uin))
             return '\n'.join(result)
-    
+
     def cmd_stop(self, args, msg, bot):
         '''6 stop'''
         if len(args) == 0:
             INFO('收到 stop 命令，QQBot 即将停止')
             msg.Reply('QQBot已停止')
             bot.Stop(code=0)
-    
+
     def cmd_restart(self, args, msg, bot):
         '''7 restart'''
         if len(args) == 0:
